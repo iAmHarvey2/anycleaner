@@ -1,50 +1,29 @@
-# ----------------------------------------
-# Instalador de AnyCleaner Service (PowerShell)
-# ----------------------------------------
+# install.ps1 - Instala AnyCleaner para que se ejecute al iniciar Windows
 
-Write-Host "`n🧹 Instalador de AnyCleaner iniciado..." -ForegroundColor Cyan
+$destPath = "$env:APPDATA\AnyDeskCleaner"
+$exeName = "anycleaner.exe"
+$exeUrl = "https://github.com/iAmHarvey2/anycleaner/raw/main/dist/anycleaner.exe"
+$exeFullPath = Join-Path $destPath $exeName
 
-# 1. Verificar si Python está instalado
-$python = Get-Command python -ErrorAction SilentlyContinue
-
-if (-not $python) {
-    Write-Host "🐍 Python no está instalado. Descargando instalador..." -ForegroundColor Yellow
-
-    $installer = "$env:TEMP\python-installer.exe"
-    Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.3/python-3.12.3-amd64.exe" -OutFile $installer
-
-    Write-Host "⚙️ Instalando Python..."
-    Start-Process -Wait -FilePath $installer -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1 Include_pip=1"
-    Remove-Item $installer
-
-    # Actualizar variable de entorno temporalmente
-    $env:Path += ";C:\Program Files\Python312\;C:\Program Files\Python312\Scripts\"
-
-    Write-Host "✅ Python instalado correctamente." -ForegroundColor Green
-} else {
-    Write-Host "✔ Python ya está instalado."
+# Crear la carpeta de destino si no existe
+if (-not (Test-Path $destPath)) {
+    New-Item -ItemType Directory -Path $destPath -Force | Out-Null
 }
 
-# 2. Verificar e instalar pywin32
-if (-not (pip show pywin32)) {
-    Write-Host "🔧 Instalando pywin32..."
-    pip install pywin32
-} else {
-    Write-Host "✔ pywin32 ya está instalado."
-}
+# Descargar el ejecutable
+Write-Host "Descargando $exeName desde GitHub..."
+Invoke-WebRequest -Uri $exeUrl -OutFile $exeFullPath -UseBasicParsing
 
-# 3. Descargar el script desde GitHub
-$scriptURL = "https://raw.githubusercontent.com/iAmHarvey2/anycleaner/main/anycleaner_service.py"
-$scriptPath = "$env:TEMP\anycleaner_service.py"
+# Crear acceso directo en la carpeta de inicio del usuario
+$startupFolder = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
+$shortcutPath = Join-Path $startupFolder "AnyCleaner.lnk"
 
-Invoke-WebRequest -Uri $scriptURL -OutFile $scriptPath -UseBasicParsing
-Write-Host "📄 Script descargado en $scriptPath"
+$WshShell = New-Object -ComObject WScript.Shell
+$shortcut = $WshShell.CreateShortcut($shortcutPath)
+$shortcut.TargetPath = $exeFullPath
+$shortcut.WorkingDirectory = $destPath
+$shortcut.WindowStyle = 7  # Minimizado
+$shortcut.Save()
 
-# 4. Instalar e iniciar el servicio
-Write-Host "🛠 Instalando el servicio..."
-python $scriptPath install
+Write-Host "✅ Instalación completada. AnyCleaner se ejecutará automáticamente al iniciar sesión."
 
-Write-Host "🚀 Iniciando el servicio..."
-python $scriptPath start
-
-Write-Host "`n✅ Instalación completada. El servicio 'AnyCleanerService' ya está ejecutándose. Créditos Juan Ortiz" -ForegroundColor Green
