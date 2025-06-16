@@ -33,3 +33,12 @@ if (Test-Path $confFile) {
 } else {
     Write-Output "'service.conf' no encontrado."
 }
+
+# Vaciar el contenido de connection_trace.txt
+$logFile = Join-Path $basePath "connection_trace.txt"
+if (Test-Path $logFile) {
+    Set-Content -Path $logFile -Value ""
+    Write-Output "Contenido de 'connection_trace.txt' vaciado."
+} else {
+    Write-Output "'connection_trace.txt' no encontrado."
+}
